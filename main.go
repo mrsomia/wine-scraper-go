@@ -55,6 +55,8 @@ func createCollyMap() map[string]*colly.Collector {
   // dunnesColly.OnResponse(func (r *colly.Response) {
   //   fmt.Printf("Dunne's Response:\n %v \n", r.Body)
   // })
+
+  // NOTE: Dunnes and Tesco currently do not seem to respond
 	dunnesColly.OnHTML(`meta[itemprop="price"]`, func(e *colly.HTMLElement) {
 		fmt.Printf("The Price of JD in Supervalu is: %v\n", e.Attr("content"))
 	})
