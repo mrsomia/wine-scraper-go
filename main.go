@@ -2,12 +2,20 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"github.com/go-rod/rod"
+	"strings"
+)
+
+type Store int
+
+const (
+	tesco Store = iota
+	supervalu
+	dunnes
 )
 
 type ItemURL struct {
-	store string
+	store Store
 	url   string
 }
 
@@ -19,17 +27,15 @@ type Item struct {
 var jd = Item{
 	name: "Jack Daniel's",
 	urls: []ItemURL{
-		{store: "tesco", url: "https://www.tesco.ie/groceries/en-IE/products/255248604"},
-		{store: "supervalu", url: "https://shop.supervalu.ie/sm/delivery/rsid/5550/product/jack-daniels-old-no-7-whiskey-70-cl-id-1020340001"},
-		{store: "dunnes", url: "https://www.dunnesstoresgrocery.com/sm/delivery/rsid/258/product/jack-daniels-old-no-7-brand-tennessee-sour-mash-whiskey-70cl-id-100672192"},
+		{store: tesco, url: "https://www.tesco.ie/groceries/en-IE/products/255248604"},
+		{store: supervalu, url: "https://shop.supervalu.ie/sm/delivery/rsid/5550/product/jack-daniels-old-no-7-whiskey-70-cl-id-1020340001"},
+		{store: dunnes, url: "https://www.dunnesstoresgrocery.com/sm/delivery/rsid/258/product/jack-daniels-old-no-7-brand-tennessee-sour-mash-whiskey-70cl-id-100672192"},
 	},
 }
 
 var items = map[string]Item{
 	"JD": jd,
 }
-
-const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 
 type GetFromSite func(url string)
 
@@ -70,10 +76,10 @@ func getFromDunnes(url string) {
 	fmt.Printf("Price: %v \n", cleanPrice(*el.MustAttribute("content")))
 }
 
-var scrapers = map[string]GetFromSite{
-	"supervalu": getFromSuperValu,
-	"tesco":     getFromTesco,
-	"dunnes":    getFromDunnes,
+var scrapers = map[Store]GetFromSite{
+	supervalu: getFromSuperValu,
+	tesco:     getFromTesco,
+	dunnes:    getFromDunnes,
 }
 
 func main() {
