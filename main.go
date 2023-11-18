@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
-	"github.com/gocolly/colly/v2"
-  "github.com/go-rod/rod"
+	"github.com/go-rod/rod"
 )
 
 type ItemURL struct {
@@ -20,9 +19,9 @@ type ItemLink struct {
 var jd = ItemLink{
 	name: "Jack Daniel's",
 	urls: []ItemURL{
-		{store: "tesco", url: "https://www.tesco.ie/groceries/en-IE/search?query=jack%20daniel"},
+		{store: "tesco", url: "https://www.tesco.ie/groceries/en-IE/products/255248604"},
 		{store: "supervalu", url: "https://shop.supervalu.ie/sm/delivery/rsid/5550/product/jack-daniels-old-no-7-whiskey-70-cl-id-1020340001"},
-    {store: "dunnes", url: "https://www.dunnesstoresgrocery.com/sm/delivery/rsid/258/product/jack-daniels-old-no-7-brand-tennessee-sour-mash-whiskey-70cl-id-100672192"},
+		{store: "dunnes", url: "https://www.dunnesstoresgrocery.com/sm/delivery/rsid/258/product/jack-daniels-old-no-7-brand-tennessee-sour-mash-whiskey-70cl-id-100672192"},
 	},
 }
 
@@ -32,69 +31,58 @@ var itemLinks = map[string]ItemLink{
 
 const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 
-type GetFromSite func(url string) 
+type GetFromSite func(url string)
+
+func cleanPrice(s string) string {
+	i := strings.TrimSuffix(s, " Clubcard Price")
+	i = strings.TrimSpace(i)
+	i = strings.TrimPrefix(i, "€")
+	return i
+}
 
 func getFromSuperValu(url string) {
-	supervaluColly := colly.NewCollector(colly.IgnoreRobotsTxt())
-  supervaluColly.UserAgent = USER_AGENT
-	supervaluColly.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL)
-	})
-	supervaluColly.OnHTML(`[data-testid="pdpMainPrice-div-testId"]`, func(e *colly.HTMLElement) {
-    fmt.Printf("The Price of JD in Supervalu is: %v\n", e.Text[1:])
-	})
-
-  supervaluColly.Visit(url)
+	fmt.Printf("Fetching from: %v \n", url)
+	page := rod.New().MustConnect().MustPage(url)
+	page.MustWaitStable()
+	el := page.MustElement(`[data-testid="pdpMainPrice-div-testId"]`)
+	fmt.Printf("Price: %v \n", cleanPrice(el.MustText()))
 }
 
 func getFromTesco(url string) {
-	tescoColly := colly.NewCollector(colly.IgnoreRobotsTxt())
-	tescoColly.UserAgent = USER_AGENT
-
-
-	tescoColly.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL)
-	})
-
-  tescoColly.OnHTML(`div[data-auto="product-tile"]`, func(e *colly.HTMLElement) {
-    tile := e.DOM
-    h3 := tile.Find("h3").Text()
-    if h3 != "Jack Daniel's Old No. 7 Tennessee Whiskey 70 cL" {
-      return
-    }
-
-    price := tile.Find(".beans-price__container  p").First().Text()
-    offerPrice := tile.Find("span.offer-text").First().Text()
-    if offerPrice != "" {
-      price = fmt.Sprintf("%v", strings.Split(offerPrice, " ")[0])
-    }
-    fmt.Printf("Price of %v at Tesco is: %v \n", h3, price[1:])
-	})
-  
-  tescoColly.Visit(url)
+	fmt.Printf("Fetching from: %v \n", url)
+	page := rod.New().MustConnect().MustPage(url)
+	page.MustWaitStable()
+	priceEl := page.MustElement(`span[data-auto="price-value"]`)
+	offerElem := page.MustElement(`span.offer-text`)
+	if offerElem != nil {
+		// offerPrice := strings.Split(offerElem.MustText(), " ")[0]
+		fmt.Printf("Price offer: %v \n", cleanPrice(offerElem.MustText()))
+		return
+	}
+	fmt.Printf("Price: %v \n", cleanPrice(priceEl.MustText()))
 }
 
 func getFromDunnes(url string) {
-  page := rod.New().MustConnect().MustPage(url)
-  page.MustWaitStable()
-  el := page.MustElement(`meta[itemprop="price"]`)
-  fmt.Println(*el.MustAttribute("content"))
+	fmt.Printf("Fetching from: %v \n", url)
+	page := rod.New().MustConnect().MustPage(url)
+	page.MustWaitStable()
+	el := page.MustElement(`meta[itemprop="price"]`)
+	fmt.Printf("Price: %v \n", cleanPrice(*el.MustAttribute("content")))
 }
 
-
 var scrapers = map[string]GetFromSite{
-		"supervalu": getFromSuperValu,
-		"tesco":     getFromTesco,
-		"dunnes":    getFromDunnes,
-	}
+	"supervalu": getFromSuperValu,
+	"tesco":     getFromTesco,
+	"dunnes":    getFromDunnes,
+}
 
 func main() {
-  for _, itemLink := range itemLinks {
-    for _, itemUrl := range itemLink.urls {
-      c, ok := scrapers[itemUrl.store]
-      if ok {
-        c(itemUrl.url)
-      }
-    }
-  }
+	for _, itemLink := range itemLinks {
+		for _, itemUrl := range itemLink.urls {
+			c, ok := scrapers[itemUrl.store]
+			if ok {
+				c(itemUrl.url)
+			}
+		}
+	}
 }
