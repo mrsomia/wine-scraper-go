@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"github.com/gocolly/colly/v2"
+  "github.com/go-rod/rod"
 )
 
 type ItemURL struct {
@@ -15,14 +16,6 @@ type ItemLink struct {
 	name string
 	urls []ItemURL
 }
-
-type Store string
-
-const (
-  tesco Store = "tesco"
-  supervalu Store = "supervalu"
-  dunnes Store = "dunnes"
-)
 
 var jd = ItemLink{
 	name: "Jack Daniel's",
@@ -37,8 +30,11 @@ var itemLinks = map[string]ItemLink{
 	"JD": jd,
 }
 
-func createCollyMap() map[string]*colly.Collector {
-  const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+
+type GetFromSite func(url string) 
+
+func getFromSuperValu(url string) {
 	supervaluColly := colly.NewCollector(colly.IgnoreRobotsTxt())
   supervaluColly.UserAgent = USER_AGENT
 	supervaluColly.OnRequest(func(r *colly.Request) {
@@ -48,22 +44,10 @@ func createCollyMap() map[string]*colly.Collector {
     fmt.Printf("The Price of JD in Supervalu is: %v\n", e.Text[1:])
 	})
 
-  // NOTE: Dunnes currently does not work
-	dunnesColly := colly.NewCollector(colly.IgnoreRobotsTxt())
-  dunnesColly.UserAgent = USER_AGENT
-	dunnesColly.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL)
-	})
-  dunnesColly.OnResponse(func (r *colly.Response) {
-    fmt.Printf("Dunne's Response:\n %v \n", r.Body)
-  })
-  dunnesColly.OnError(func(r *colly.Response, err error) {
-    fmt.Println(err.Error())
-  })
-	dunnesColly.OnHTML(`meta[itemprop="price"]`, func(e *colly.HTMLElement) {
-		fmt.Printf("The Price of JD in Supervalu is: %v\n", e.Attr("content"))
-	})
+  supervaluColly.Visit(url)
+}
 
+func getFromTesco(url string) {
 	tescoColly := colly.NewCollector(colly.IgnoreRobotsTxt())
 	tescoColly.UserAgent = USER_AGENT
 
@@ -86,21 +70,30 @@ func createCollyMap() map[string]*colly.Collector {
     }
     fmt.Printf("Price of %v at Tesco is: %v \n", h3, price[1:])
 	})
-
-	return map[string]*colly.Collector{
-		"supervalu": supervaluColly,
-		"tesco":     tescoColly,
-		"dunnes":    dunnesColly,
-	}
+  
+  tescoColly.Visit(url)
 }
 
+func getFromDunnes(url string) {
+  page := rod.New().MustConnect().MustPage(url)
+  page.MustWaitStable()
+  el := page.MustElement(`meta[itemprop="price"]`)
+  fmt.Println(*el.MustAttribute("content"))
+}
+
+
+var scrapers = map[string]GetFromSite{
+		"supervalu": getFromSuperValu,
+		"tesco":     getFromTesco,
+		"dunnes":    getFromDunnes,
+	}
+
 func main() {
-  collys := createCollyMap()
   for _, itemLink := range itemLinks {
     for _, itemUrl := range itemLink.urls {
-      c, ok := collys[itemUrl.store]
+      c, ok := scrapers[itemUrl.store]
       if ok {
-        c.Visit(itemUrl.url)
+        c(itemUrl.url)
       }
     }
   }
