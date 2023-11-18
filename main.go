@@ -11,12 +11,12 @@ type ItemURL struct {
 	url   string
 }
 
-type ItemLink struct {
+type Item struct {
 	name string
 	urls []ItemURL
 }
 
-var jd = ItemLink{
+var jd = Item{
 	name: "Jack Daniel's",
 	urls: []ItemURL{
 		{store: "tesco", url: "https://www.tesco.ie/groceries/en-IE/products/255248604"},
@@ -25,7 +25,7 @@ var jd = ItemLink{
 	},
 }
 
-var itemLinks = map[string]ItemLink{
+var items = map[string]Item{
 	"JD": jd,
 }
 
@@ -77,8 +77,8 @@ var scrapers = map[string]GetFromSite{
 }
 
 func main() {
-	for _, itemLink := range itemLinks {
-		for _, itemUrl := range itemLink.urls {
+	for _, item := range items {
+		for _, itemUrl := range item.urls {
 			c, ok := scrapers[itemUrl.store]
 			if ok {
 				c(itemUrl.url)
