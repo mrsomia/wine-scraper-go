@@ -14,6 +14,19 @@ const (
 	dunnes
 )
 
+func (s Store) String() string {
+	switch s {
+	case tesco:
+		return "tesco"
+	case supervalu:
+		return "supervalu"
+	case dunnes:
+		return "dunnes"
+	default:
+		return "unknown"
+	}
+}
+
 type ItemURL struct {
 	store Store
 	url   string
