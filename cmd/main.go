@@ -136,5 +136,6 @@ func fetchPrices() {
 }
 
 func main() {
+  GetDBConnection("prices.db")
   fetchPrices()
 }
