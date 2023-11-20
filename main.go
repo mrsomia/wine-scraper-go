@@ -120,7 +120,7 @@ var scrapers = map[Store]GetFromSite{
 	dunnes:    getFromDunnes,
 }
 
-func main() {
+func fetchPrices() {
 	var wg sync.WaitGroup
 
 	for _, item := range items {
@@ -133,5 +133,8 @@ func main() {
 		}
 	}
 	wg.Wait()
+}
 
+func main() {
+  fetchPrices()
 }
